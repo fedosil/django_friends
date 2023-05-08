@@ -1,42 +1,71 @@
-from rest_framework import generics
+from django.http import Http404
+from rest_framework import generics, status
 from rest_framework import permissions
+from rest_framework.generics import ListAPIView, ListCreateAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from users.models import User
-from users.serializers import UserSerializer, UserDetailSerializer
+from users.serializers import UserSerializer
 
-class UserList(generics.ListAPIView):
+
+class UserList(ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-class UserDetail(generics.RetrieveAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserDetailSerializer
+
+class UserDetail(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-class FriendsList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    def get_object(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            raise Http404
 
-    def get_queryset(self):
-        queryset = super(FriendsList, self).get_queryset()
-        return queryset.get(pk=self.request.user.id).friends.all()
+    def get(self, request, pk):
+        obj = self.get_object(pk)
+        message = User.objects.get(pk=request.user.id).status(obj.id)
+        return Response({'message': message}, status=status.HTTP_200_OK)
 
-class FRequestsList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
-    def get_queryset(self):
-        queryset = super(FRequestsList, self).get_queryset()
-        return queryset.get(pk=self.request.user.id).f_requests.all()
-
-class FollowersList(generics.ListAPIView):
+class FriendsList(ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        queryset = super(FollowersList, self).get_queryset()
-        return queryset.filter(f_requests=self.request.user)
+        return User.objects.get(pk=self.request.user.id).get_friends()
 
+    def create(self, request, *args, **kwargs):
+        try:
+            user_id = request.data['user_id']
+            try:
+                obj = User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                raise Http404
+            if request.user.id == obj.id:
+                return Response({'message': 'it is impossible to subscribe to yourself'}, status=status.HTTP_400_BAD_REQUEST)
+            message = User.objects.get(pk=request.user.id).follow(obj.id)
+            if message:
+                return Response({'message': message}, status=status.HTTP_200_OK)
+            Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except KeyError:
+            return Response({'user_id': 'This field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+class FRequestsList(ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return User.objects.get(pk=self.request.user.id).get_requests()
+
+
+class FollowersList(ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return User.objects.get(pk=self.request.user.id).get_followers()
