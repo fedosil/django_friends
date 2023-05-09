@@ -29,7 +29,7 @@ class UserDetail(APIView):
         return Response({'message': message}, status=status.HTTP_200_OK)
 
 
-class FriendsList(ListCreateAPIView):
+class FriendsListCreate(ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (permissions.IsAuthenticated,)
