@@ -51,4 +51,16 @@ class User(AbstractUser):
             self.f_requests.add(user_id)
             return SUBSCRIPTION
 
-
+    def f_delete(self, user_id):
+        obj = User.objects.get(pk=user_id)
+        if self.status(user_id) == FRIENDS:
+            self.friends.remove(user_id)
+            return f'Deleted from {FRIENDS}'
+        elif self.status(user_id) == FOLLOWER:
+            obj.f_requests.remove(self.id)
+            return f'Deleted from {FOLLOWER}'
+        elif self.status(user_id) == SUBSCRIPTION:
+            self.f_requests.remove(user_id)
+            return f'Deleted from {SUBSCRIPTION}'
+        elif self.status(user_id) == NO_STATUS:
+            return f'User has no status'
