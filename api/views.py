@@ -3,14 +3,15 @@ from rest_framework import generics, status, mixins
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from users.models import User
-from users.serializers import UserSerializer
+from users.serializers import UserModelSerializer, UserResponseSerializer, UserRequestSerializer
 
 
 class UserList(generics.ListAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserModelSerializer
 
 
 class UserDetail(APIView):
@@ -22,6 +23,10 @@ class UserDetail(APIView):
         except User.DoesNotExist:
             raise Http404
 
+    @extend_schema(
+        request=UserRequestSerializer,
+        responses={200: UserResponseSerializer},
+    )
     def get(self, request, pk):
         obj = self.get_object(pk)
         message = User.objects.get(pk=request.user.id).status(obj.id)
@@ -29,8 +34,7 @@ class UserDetail(APIView):
 
 
 class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserModelSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_object(self, pk):
@@ -45,6 +49,11 @@ class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
+    @extend_schema(
+        # parameters=[OpenApiParameter(name='User_id', required=True, type=int),],
+        request=UserRequestSerializer,
+        responses={200: UserResponseSerializer},
+    )
     def post(self, request, *args, **kwargs):
         try:
             user_id = request.data['user_id']
@@ -54,11 +63,16 @@ class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             message = User.objects.get(pk=request.user.id).follow(obj.id)
             if message:
-                return Response({'message': message}, status=status.HTTP_200_OK)
+                return Response({'message': message}, status=status.HTTP_201_CREATED)
             Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except KeyError:
             return Response({'user_id': 'This field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        parameters=[OpenApiParameter(name='User_id', required=True, type=int),],
+        request=UserRequestSerializer,
+        responses={200: UserResponseSerializer},
+    )
     def delete(self, request, *args, **kwargs):
         try:
             user_id = request.data['user_id']
@@ -68,14 +82,14 @@ class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             message = User.objects.get(pk=request.user.id).f_delete(obj.id)
             if message:
-                return Response({'message': message}, status=status.HTTP_200_OK)
+                return Response({'message': message}, status=status.HTTP_201_CREATED)
             Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except KeyError:
             return Response({'user_id': 'This field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class FRequestsList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserModelSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
@@ -83,8 +97,7 @@ class FRequestsList(generics.ListAPIView):
 
 
 class FollowersList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserModelSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
