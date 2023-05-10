@@ -9,7 +9,10 @@ Start docker:
    docker compose build
    docker compose up
    ```
+
 API Documentation http://localhost:8000/docs/
+
+Endpoints summary:
 
 1. GET api/followers, api/friends, api/requests - list of followers, friends and requests accordingly
 2. POST api/friends - friend request or add a follower as a friend
