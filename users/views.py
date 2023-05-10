@@ -23,10 +23,6 @@ class UserDetail(APIView):
         except User.DoesNotExist:
             raise Http404
 
-    @extend_schema(
-        request=UserRequestSerializer,
-        responses={200: UserResponseSerializer},
-    )
     def get(self, request, pk):
         obj = self.get_object(pk)
         message = User.objects.get(pk=request.user.id).status(obj.id)
