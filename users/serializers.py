@@ -6,6 +6,7 @@ class UserModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username')
+        read_only_fields = ('id', 'username')
 
 
 class UserResponseSerializer(serializers.Serializer):

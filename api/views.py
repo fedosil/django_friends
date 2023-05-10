@@ -1,5 +1,5 @@
 from django.http import Http404
-from rest_framework import generics, status, mixins
+from rest_framework import generics, status, mixins, viewsets
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,7 +33,8 @@ class UserDetail(APIView):
         return Response({'message': message}, status=status.HTTP_200_OK)
 
 
-class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
+class FriendsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    queryset = User.objects.all()
     serializer_class = UserModelSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -46,15 +47,15 @@ class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
     def get_queryset(self):
         return User.objects.get(pk=self.request.user.id).get_friends()
 
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+    # def get(self, request, *args, **kwargs):
+    #     return self.list(request, *args, **kwargs)
 
     @extend_schema(
         # parameters=[OpenApiParameter(name='User_id', required=True, type=int),],
         request=UserRequestSerializer,
         responses={200: UserResponseSerializer},
     )
-    def post(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         try:
             user_id = request.data['user_id']
             obj = self.get_object(user_id)
@@ -63,26 +64,25 @@ class FriendsListCreateDelete(mixins.ListModelMixin, generics.GenericAPIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             message = User.objects.get(pk=request.user.id).follow(obj.id)
             if message:
-                return Response({'message': message}, status=status.HTTP_201_CREATED)
+                return Response({'message': message}, status=status.HTTP_200_OK)
             Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except KeyError:
             return Response({'user_id': 'This field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    @extend_schema(
-        parameters=[OpenApiParameter(name='User_id', required=True, type=int),],
-        request=UserRequestSerializer,
-        responses={200: UserResponseSerializer},
-    )
-    def delete(self, request, *args, **kwargs):
+    # @extend_schema(
+    #     # parameters=[OpenApiParameter(name='User_id', required=True, type=int),],
+    #     # request=UserRequestSerializer,
+    #     responses={200: UserResponseSerializer},
+    # )
+    def destroy(self, request, pk, *args, **kwargs):
         try:
-            user_id = request.data['user_id']
-            obj = self.get_object(user_id)
+            obj = self.get_object(pk)
             if request.user.id == obj.id:
                 return Response({'message': 'it is impossible to delete yourself'},
                                 status=status.HTTP_400_BAD_REQUEST)
             message = User.objects.get(pk=request.user.id).f_delete(obj.id)
             if message:
-                return Response({'message': message}, status=status.HTTP_201_CREATED)
+                return Response({'message': message}, status=status.HTTP_200_OK)
             Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except KeyError:
             return Response({'user_id': 'This field is required'}, status=status.HTTP_400_BAD_REQUEST)
